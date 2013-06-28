@@ -1,0 +1,40 @@
+Loading db file '/home/inf2010/dimipana/Documents/ahb_slave_split/lib_osu05/osu05_stdcells.db'
+Information: Propagating switching activity (low effort zero delay simulation). (PWR-6)
+Warning: Design has unannotated primary inputs. (PWR-414)
+Warning: Design has unannotated sequential cell outputs. (PWR-415)
+ 
+****************************************
+Report : power
+        -analysis_effort low
+Design : ahb_slave
+Version: D-2010.03-SP3
+Date   : Thu Jun 20 13:19:54 2013
+****************************************
+
+
+Library(s) Used:
+
+    osu05_stdcells (File: /home/inf2010/dimipana/Documents/ahb_slave_split/lib_osu05/osu05_stdcells.db)
+
+
+Operating Conditions: typical   Library: osu05_stdcells
+Wire Load Model Mode: top
+
+
+Global Operating Voltage = 5    
+Power-specific unit information :
+    Voltage Units = 1V
+    Capacitance Units = 1.000000pf
+    Time Units = 1ns
+    Dynamic Power Units = 1mW    (derived from V,C,T units)
+    Leakage Power Units = 1nW
+
+
+  Cell Internal Power  = 886.7162 mW   (96%)
+  Net Switching Power  =  34.6573 mW    (4%)
+                         ---------
+Total Dynamic Power    = 921.3735 mW  (100%)
+
+Cell Leakage Power     =   1.0592 uW
+
+1

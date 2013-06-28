@@ -15,7 +15,7 @@
 
 
   
-module ahb_slave(clk,reset,HSEL,HADDR,HBURST,HSIZE,HTRANS,HWRITE,HWDATA,HRDATA,HREADY,HRESP,STALL_pre);
+module ahb_slave(clk,reset,HSEL,HADDR,HBURST,HSIZE,HTRANS,HWRITE,HWDATA,RANDSPLIT,HMASTER,HMASTLOCK,HRDATA,HREADY,HRESP,HSPLIT,STALL_pre);
    
    parameter                  SLAVE_NUM = 0;
    
@@ -29,11 +29,14 @@ module ahb_slave(clk,reset,HSEL,HADDR,HBURST,HSIZE,HTRANS,HWRITE,HWDATA,HRDATA,H
    input [1:0]                HTRANS;
    input                      HWRITE;
    input [31:0]               HWDATA;
+   input [2:0]			RANDSPLIT;		//First bit indicates whether or not split will be used, and the rest 2 bits the wait states.//CHANGES//
+   input [3:0]			HMASTER;		//CHANGES//
+   input			HMASTLOCK;		//CHANGES//
    input                      STALL_pre;
    output [31:0]              HRDATA;
    output                     HREADY;
-   output                     HRESP;
-
+   output [1:0]                    HRESP;		//CHANGES//
+   output [15:0]		HSPLIT;			//CHANGES//
 
    
    wire                       WR;
@@ -55,9 +58,13 @@ module ahb_slave(clk,reset,HSEL,HADDR,HBURST,HSIZE,HTRANS,HWRITE,HWDATA,HRDATA,H
                            .HTRANS(HTRANS),
                            .HWRITE(HWRITE),
                            .HWDATA(HWDATA),
+			   .RANDSPLIT(RANDSPLIT),
+			   .HMASTER(HMASTER),
+			   .HMASTLOCK(HMASTLOCK),
                            .HRDATA(HRDATA),
                            .HREADY(HREADY),
                            .HRESP(HRESP),
+			   .HSPLIT(HSPLIT),
 			   .STALL_pre(STALL_pre),
                            .WR(WR),
                            .RD(RD),

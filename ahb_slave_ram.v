@@ -16,42 +16,48 @@
 
   
   
-module ahb_slave_ram(clk,reset,HSEL,HADDR,HBURST,HSIZE,HTRANS,HWRITE,HWDATA,HRDATA,HREADY,HRESP,WR,RD,ADDR_WR,ADDR_RD,DIN,DOUT,STALL_pre);
+module ahb_slave_ram(clk,reset,HSEL,HADDR,HBURST,HSIZE,HTRANS,HWRITE,HWDATA,RANDSPLIT,HMASTER,HMASTLOCK,HRDATA,HREADY,HRESP,HSPLIT,WR,RD,ADDR_WR,ADDR_RD,DIN,DOUT,STALL_pre);
    
    input                      clk;
    input               	      reset;
    input		      HSEL;
    
-   input  [23:0]               HADDR;
-   input  [2:0]                HBURST;
-   input  [1:0]                HSIZE;
-   input  [1:0]                HTRANS;
+   input  [23:0]              HADDR;
+   input  [2:0]               HBURST;
+   input  [1:0]               HSIZE;
+   input  [1:0]               HTRANS;
    input                      HWRITE;
-   input  [31:0]               HWDATA;
+   input  [31:0]              HWDATA;
+   input [2:0]			RANDSPLIT;		//First bit indicates whether or not split will be used, and the rest 2 bits the wait states.//CHANGES//
+   input [3:0]			HMASTER;		//CHANGES//
+   input			HMASTLOCK;		//CHANGES//
    input                      STALL_pre;
    output [31:0]              HRDATA;
    output                     HREADY;
-   output                     HRESP;
-
+   output[1:0]                     HRESP;
+   output [15:0]		HSPLIT;			//CHANGES//
    output                     WR;
    output                     RD;
-   output [8:0]              ADDR_WR;
-   output [8:0]              ADDR_RD;
+   output [8:0]               ADDR_WR;
+   output [8:0]               ADDR_RD;
    output [31:0]              DIN;
    input  [31:0]              DOUT;
+   
 
-   parameter                HRESP_addr = {24{1'b1}};   //address for response error
-    
-   reg                        HRESP;
+   parameter                  HRESP_addr = {24{1'b1}};   //address for response error
+   
+   reg [1:0]                  HRESP;
+   reg [15:0]			HSPLIT;			//CHANGES//
    wire               	      WR_pre;
    reg                        WR_pre_d;
    wire                       WR;
    wire [8:0]       	      ADDR_WR_pre;
-   reg  [8:0]                ADDR_WR;
-   reg                        data_phase;   
-   
+   reg  [8:0]                 ADDR_WR;
+   reg                        data_phase; 
+   reg				split;			//split is used to determine if there will be a split transaction or not//CHANGES// 
+   reg	[2:0]			waitstate_pre;		// waitstate_pre is used to count clock cycles until the prefered waitstate//
+   reg	[2:0]			waitstate;
    reg                        STALL;
-   
    
    parameter                  TRANS_IDLE   = 2'b00;
    parameter                  TRANS_STALL   = 2'b01;
@@ -64,15 +70,52 @@ module ahb_slave_ram(clk,reset,HSEL,HADDR,HBURST,HSIZE,HTRANS,HWRITE,HWDATA,HRDA
        STALL <= 1'b0;
      else /*if (stall_enable)*/
        STALL <= STALL_pre;
-   
+
+
+   always @(posedge clk or posedge reset) 			//SPLIT BLOCK//
+      if(reset)
+	split <= 1'b0;
+      else if (((RANDSPLIT & 3'b100) == 3'b100) & (split==1'b0))
+	split <= 1'b1;
+      else if (waitstate == waitstate_pre+1)
+	split <= 1'b0;
+
+
    always @(posedge clk or posedge reset)
      if (reset)
-       HRESP <= 1'b0;
+       begin
+       HRESP <= 2'b00;
+       waitstate <= 3'b000;
+       HSPLIT <= 0;
+       end
      else if ((|HTRANS) & (HRESP_addr == HADDR))
-       HRESP <= 1'b1;
-     else if (HREADY)
-       HRESP <= 1'b0;
-   
+       begin
+       HRESP <= 2'b01;
+       waitstate <= 3'b000;
+       end
+     else if (split)
+       begin
+       HRESP <= 2'b11;
+       waitstate <= waitstate + 1;
+       HSPLIT[HMASTER] <= 1;
+       end
+     else
+       begin
+       HRESP <= 2'b00;
+       waitstate <= 3'b000;
+       HSPLIT[HMASTER] <= 0;
+       end
+
+
+   always @(posedge clk or posedge reset)			//WAITSTATE_PRE BLOCK
+    if(reset)
+      waitstate_pre<=0;
+    else if(split)
+      waitstate_pre <= RANDSPLIT & 3'b011;
+    else
+      waitstate_pre <= 0;
+      
+
    always @(posedge clk or posedge reset)
      if (reset)
        data_phase <= 1'b0;
@@ -82,15 +125,16 @@ module ahb_slave_ram(clk,reset,HSEL,HADDR,HBURST,HSIZE,HTRANS,HWRITE,HWDATA,HRDA
        data_phase <= 1'b0;
    
    assign               HRDATA = HREADY & data_phase ? DOUT : 'd0;
-   assign               HREADY = ~HSEL & (HTRANS == TRANS_STALL) ? 1'b0 : STALL;
+   assign               HREADY = ((~HSEL & (HTRANS == TRANS_STALL)) | split)? 1'b0 : STALL;  						//If split is high HREADY should be low //CHANGES//
 
-   
+   //assign		waitsate_pre = (HREADY & ~reset) ? RANDSPLIT & 3'b011 : 3'b000;							//If HREADY is high set prefered waitstates to the RANDSPLIT stantard//CHANGES//
+
    assign               WR_pre      = HWRITE & ((HTRANS == TRANS_NONSEQ) | (HTRANS == TRANS_SEQ));
    assign               WR          = WR_pre_d & HREADY;
-   assign               RD          = (~HWRITE) & ((HTRANS == TRANS_NONSEQ) | (HTRANS == TRANS_SEQ)) & HREADY;
+   assign               RD          = (~HWRITE) & ((HTRANS == TRANS_NONSEQ) | (HTRANS == TRANS_SEQ)) ;
    assign               ADDR_WR_pre = {9{WR_pre}} & HADDR;
    assign               ADDR_RD     = {9{RD}} & HADDR;
-   assign               DIN         = HWDATA;
+   assign               DIN         = HREADY ? HWDATA: 32'h0;
    
                
    always @(posedge clk or posedge reset)
@@ -107,6 +151,7 @@ module ahb_slave_ram(clk,reset,HSEL,HADDR,HBURST,HSIZE,HTRANS,HWRITE,HWDATA,HRDA
        
       
 endmodule
+
 
 
 

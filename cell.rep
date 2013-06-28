@@ -1,0 +1,24 @@
+ 
+****************************************
+Report : cell
+Design : ahb_slave
+Version: D-2010.03-SP3
+Date   : Thu Jun 20 13:19:42 2013
+****************************************
+
+Attributes:
+    b - black box (unknown)
+    h - hierarchical
+    n - noncombinational
+    r - removable
+    u - contains unmapped logic
+
+Cell                      Reference       Library             Area  Attributes
+--------------------------------------------------------------------------------
+ahb_slave_mem             ahb_slave_mem                   3722436.000000
+                                                                    h, n
+ahb_slave_ram             ahb_slave_ram                   107370.000000
+                                                                    h, n
+--------------------------------------------------------------------------------
+Total 2 cells                                             3829806.000000
+1
